@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+    <link rel="stylesheet" href="css/qgis2web.css">
+    <link rel="stylesheet" href="css/fontawesome-all.min.css">
+    <link rel="stylesheet" href="css/leaflet.photon.css">
+    <link rel="stylesheet" href="css/leaflet-measure.css">
+    <title>Race4Prali</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        :root {
+            --primary:        #4caf82;
+            --primary-hover:  #3a9a6e;
+            --primary-light:  #ecf9f2;
+            --navbar-bg:      #D0CCD0;
+            --panel-bg:       #FBFCFF;
+            --border-color:   #c5e8d5;
+            --text-dark:      #2a5040;
+            --text-muted:     #6a9080;
+            --btn-text:       #ffffff;
+            --navbar-h:       74px;
+            --panel-w:        258px;
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            margin: 0; padding: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+        }
+
+        /* ─── NAVBAR ─────────────────────────────────── */
+        #main-navbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: var(--navbar-h);
+            background-color: var(--navbar-bg);
+            border-bottom: 2px solid #AB5938;
+            display: flex;
+            align-items: center;
+            padding: 0 18px;
+            gap: 14px;
+            z-index: 2000;
+            box-shadow: 0 2px 10px rgba(42, 80, 64, 0.10);
+        }
+
+        #navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            margin-left: 80px;
+        }
+
+        #logo {
+            height: 40px;
+            width: auto;
+        }
+
+        #project-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-dark);
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        #navbar-links {
+            display: flex;
+            gap: 8px;
+            margin-left: 70px;
+        }
+
+        .nav-btn {
+            display: inline-block;
+            padding: 8px 20px;
+            background-color: #605856;
+            color: var(--btn-text) !important;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            text-decoration: none !important;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.18s, box-shadow 0.18s;
+            line-height: 1.4;
+        }
+
+        .nav-btn:hover {
+            background-color: #4a4240;
+            color: var(--btn-text) !important;
+            box-shadow: 0 2px 7px rgba(96, 88, 86, 0.35);
+        }
+
+        .nav-btn.active {
+            background-color: #4a4240;
+        }
+
+        #lang-toggle {
+            display: flex;
+            gap: 5px;
+            margin-left: auto;
+            margin-right: 40px;
+        }
+
+        .lang-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid #605856;
+            background: transparent;
+            color: var(--text-dark);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.18s;
+        }
+
+        .lang-btn.active {
+            background-color: #605856;
+            color: #fff;
+        }
+
+        .lang-btn:hover:not(.active) {
+            background-color: rgba(96, 88, 86, 0.12);
+        }
+
+        /* ─── MAIN LAYOUT ─────────────────────────────── */
+        #main-content {
+            position: fixed;
+            top: var(--navbar-h);
+            left: 0; right: 0; bottom: 0;
+            display: flex;
+        }
+
+        /* ─── PANELS ──────────────────────────────────── */
+        #left-panel {
+            width: var(--panel-w);
+            flex-shrink: 0;
+            background-color: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        #right-panel {
+            width: 310px;
+            flex-shrink: 0;
+            background-color: var(--panel-bg);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        #right-panel.open {
+            display: flex;
+        }
+
+        #info-placeholder {
+            padding: 20px 16px;
+            font-size: 12px;
+            color: #fff;
+            text-align: center;
+            line-height: 1.75;
+            opacity: 0.85;
+        }
+        #info-placeholder strong { opacity: 1; color: #fff; }
+        #route-info-content {
+            padding: 14px;
+            font-size: 13px;
+            color: var(--text-dark);
+            line-height: 1.7;
+        }
+        #route-info-content h4 {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin: 0 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(96,88,86,0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+        .route-img-placeholder {
+            background: rgba(96,88,86,0.08);
+            border: 2px dashed rgba(96,88,86,0.3);
+            border-radius: 10px;
+            height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            margin-bottom: 14px;
+            color: #605856;
+            font-size: 11px;
+            text-align: center;
+        }
+        .route-img-placeholder i { font-size: 28px; color: #C87D62; }
+        .route-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .route-info-card {
+            background: rgba(96,88,86,0.07);
+            border-radius: 8px;
+            padding: 9px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            border: 1px solid rgba(96,88,86,0.12);
+        }
+        .route-info-card i {
+            font-size: 13px;
+            color: #C87D62;
+            margin-bottom: 2px;
+        }
+        .info-label {
+            font-size: 9px;
+            color: #6a9080;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .info-value {
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+        .route-description {
+            background: rgba(96,88,86,0.07);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 11px;
+            color: #605856;
+            font-style: italic;
+            line-height: 1.6;
+            border: 1px solid rgba(96,88,86,0.12);
+        }
+        #info-placeholder {
+            padding: 20px 16px;
+            font-size: 12px;
+            color: var(--text-dark);
+            text-align: center;
+            line-height: 1.75;
+            opacity: 0.75;
+        }
+        #info-placeholder strong { opacity: 1; color: var(--text-dark); }
+
+        .panel-header {
+            padding: 14px 16px 11px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: #C87D62;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header h3 {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 0 0 3px 0;
+        }
+
+        .panel-header p {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.85);
+            margin: 0;
+        }
+
+        #close-right-panel {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.85);
+            font-size: 18px;
+            cursor: pointer;
+            line-height: 1;
+            padding: 0 0 0 8px;
+            flex-shrink: 0;
+        }
+        #close-right-panel:hover { color: #fff; }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* ─── LAYER GROUPS ────────────────────────────── */
+        .layer-group {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .layer-group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 14px;
+            cursor: pointer;
+            transition: background-color 0.15s;
+            user-select: none;
+        }
+
+        .layer-group-header:hover {
+            background-color: #d9f2e6;
+        }
+
+        .layer-group-header.active-group {
+            background-color: #cceadb;
+        }
+
+        .layer-color-swatch {
+            width: 13px;
+            height: 13px;
+            border-radius: 2px;
+            flex-shrink: 0;
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+
+        .layer-group-name {
+            flex: 1;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .toggle-arrow {
+            font-size: 9px;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .layer-group-header.collapsed .toggle-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .layer-group-content {
+            padding: 8px 14px 10px 36px;
+            background-color: #ffffff;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .layer-group-content.hidden {
+            display: none;
+        }
+
+        /* ─── PANEL FOOTER ────────────────────────────── */
+
+        /* ─── MAP ─────────────────────────────────────── */
+        #map {
+            flex: 1;
+            height: 100%;
+            min-width: 0;
+        }
+
+        /* ─── LEGEND ──────────────────────────────────── */
+        #legend-placeholder {
+            padding: 22px 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.75;
+        }
+
+        #legend-placeholder .highlight {
+            color: var(--primary);
+        }
+
+        .legend-section {
+            padding: 14px 16px;
+            display: none;
+        }
+
+        .legend-section.active {
+            display: block;
+        }
+
+        .legend-section h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin: 0 0 10px 0;
+            letter-spacing: 0.4px;
+        }
+
+        .legend-section img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+
+        /* ── Facilities slide-down submenu ── */
+        .facilities-submenu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background: #fff;
+        }
+        .facilities-submenu.open {
+            max-height: 300px;
+        }
+        .facility-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            border-bottom: 1px solid #f0e8e4;
+            font-size: 13px;
+            color: var(--text-dark);
+            transition: background 0.15s;
+            cursor: pointer;
+            user-select: none;
+        }
+        .facility-item:last-child { border-bottom: none; }
+        .facility-item:hover { background: #faf5f3; }
+        .facility-item i {
+            width: 16px;
+            text-align: center;
+            color: #605856;
+            font-size: 13px;
+        }
+        .facility-check {
+            width: 16px;
+            height: 16px;
+            accent-color: #605856;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+
+        /* ── Base-map thumbnail picker ── */
+        .basemap-picker-control {
+            position: relative;
+        }
+        .basemap-toggle-btn {
+            width: 36px;
+            height: 36px;
+            background-color: #fff;
+            background-image: url('css/images/layers.png');
+            background-size: 26px 26px;
+            background-repeat: no-repeat;
+            background-position: center;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.35);
+            transition: background-color 0.15s;
+        }
+        .basemap-toggle-btn:hover { background-color: var(--primary-light); }
+        .basemap-panel {
+            display: none;
+            position: absolute;
+            right: calc(100% + 10px);
+            top: 0;
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px;
+            gap: 10px;
+            flex-direction: row;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+            border: 1px solid var(--border-color);
+            z-index: 9999;
+        }
+        .basemap-panel.open { display: flex; }
+        .basemap-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            border-radius: 10px;
+            padding: 4px;
+            border: 3px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .basemap-card.active  { border-color: var(--primary); }
+        .basemap-card:hover:not(.active) { border-color: var(--border-color); }
+        .basemap-thumb {
+            width: 100px;
+            height: 100px;
+            border-radius: 8px;
+            object-fit: cover;
+            display: block;
+        }
+        .basemap-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-dark);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── NAVIGATION BAR ─────────────────────────────────────── -->
+    <nav id="main-navbar">
+        <div id="navbar-brand">
+            <img id="logo" src="images/logo.png" alt="Race4Prali"
+                 onerror="this.src='images/logo.jpg'; this.onerror=function(){this.style.display='none';}">
+            <span id="project-title">Race4Prali</span>
+        </div>
+        <div id="navbar-links">
+            <a href="#" class="nav-btn">Home</a>
+            <a href="#" class="nav-btn active">Data Source</a>
+            <a href="#" class="nav-btn">About</a>
+            <a href="#" class="nav-btn">Partners</a>
+        </div>
+        <div id="lang-toggle">
+            <button class="lang-btn active" onclick="setLang(this)">IT</button>
+            <button class="lang-btn"        onclick="setLang(this)">EN</button>
+        </div>
+    </nav>
+
+    <!-- ── MAIN CONTENT ───────────────────────────────────────── -->
+    <div id="main-content">
+
+        <!-- LEFT PANEL -->
+        <div id="left-panel">
+            <div class="panel-header">
+                <h3>Layer Filter</h3>
+                <p>Click a section to toggle layers</p>
+            </div>
+            <div class="panel-body" id="layer-list">
+
+                <div class="layer-group" id="group-study-area">
+                    <div class="layer-group-header active-group"
+                         onclick="toggleGroup('study-area', this)"
+                         style="background-color: #D97B66;">
+                        <span class="layer-group-name" style="color:#fff;">Prali</span>
+                        <span class="toggle-arrow" style="color:#fff;">&#9660;</span>
+                    </div>
+                </div>
+
+                <div class="layer-group" id="group-cycling-routes">
+                    <div class="layer-group-header"
+                         onclick="toggleCyclingRoutes(this)"
+                         style="background-color: #D9A577;">
+                        <span class="layer-group-name" style="color:#fff;">Cycling Routes</span>
+                        <span class="toggle-arrow" style="color:#fff;">&#9660;</span>
+                    </div>
+                    <div class="facilities-submenu" id="cycling-submenu">
+                        <label class="facility-item" onclick="showRouteInfo('Route A – B')">
+                            <i class="fas fa-bicycle"></i>
+                            <span>Route A – B</span>
+                            <input type="radio" name="cycling-route" class="facility-check" id="chk-route-ab">
+                        </label>
+                        <label class="facility-item" onclick="showRouteInfo('Route C – D')">
+                            <i class="fas fa-bicycle"></i>
+                            <span>Route C – D</span>
+                            <input type="radio" name="cycling-route" class="facility-check" id="chk-route-cd">
+                        </label>
+                        <label class="facility-item" onclick="showRouteInfo('Route E – F')">
+                            <i class="fas fa-bicycle"></i>
+                            <span>Route E – F</span>
+                            <input type="radio" name="cycling-route" class="facility-check" id="chk-route-ef">
+                        </label>
+                        <label class="facility-item" onclick="showRouteInfo('Route G – H')">
+                            <i class="fas fa-bicycle"></i>
+                            <span>Route G – H</span>
+                            <input type="radio" name="cycling-route" class="facility-check" id="chk-route-gh">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="layer-group" id="group-facilities">
+                    <div class="layer-group-header"
+                         onclick="toggleFacilities(this)"
+                         style="background-color: #F2E9D8;">
+                        <span class="layer-group-name" style="color:#605856;">Facilities</span>
+                        <span class="toggle-arrow" style="color:#605856;">&#9660;</span>
+                    </div>
+                    <div class="facilities-submenu" id="facilities-submenu">
+                        <label class="facility-item">
+                            <i class="fas fa-tint"></i>
+                            <span>Water Point</span>
+                            <input type="checkbox" class="facility-check" id="chk-water">
+                        </label>
+                        <label class="facility-item">
+                            <i class="fas fa-utensils"></i>
+                            <span>Restaurant</span>
+                            <input type="checkbox" class="facility-check" id="chk-restaurant">
+                        </label>
+                        <label class="facility-item">
+                            <i class="fas fa-tree"></i>
+                            <span>Picnic Area</span>
+                            <input type="checkbox" class="facility-check" id="chk-picnic">
+                        </label>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MAP -->
+        <div id="map"></div>
+
+        <!-- RIGHT PANEL -->
+        <div id="right-panel">
+            <div class="panel-header">
+                <h3 id="info-panel-title">Route Information</h3>
+                <button id="close-right-panel" onclick="closeRightPanel()" title="Close">&times;</button>
+            </div>
+            <div class="panel-body">
+                <div id="info-placeholder">
+                    Click a route in <strong>Cycling Routes</strong><br>to see its details here.
+                </div>
+                <div id="route-info-content" style="display:none; padding:16px;">
+                    <h4 id="route-info-name" style="font-size:13px; font-weight:700; color:#605856; margin:0 0 14px 0; padding-bottom:8px; border-bottom:1px solid #e0d8d5; text-transform:uppercase; letter-spacing:0.8px;"></h4>
+                    <ul style="list-style:disc; padding-left:18px; color:#2a5040; font-size:13px; line-height:2.2; margin:0;">
+                        <li>Route <strong>images</strong> will be added later</li>
+                        <li><strong>Distance</strong> (km) will be added later</li>
+                        <li><strong>Type of route</strong> / pavement will be added later</li>
+                        <li><strong>Elevation gain</strong> (m) will be added later</li>
+                        <li>Estimated <strong>duration</strong> will be added later</li>
+                        <li><strong>Difficulty level</strong> will be added later</li>
+                        <li><strong>Start &amp; end points</strong> will be added later</li>
+                        <li>Full <strong>route description</strong> will be added later</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── SCRIPTS ────────────────────────────────────────────── -->
+    <script src="js/qgis2web_expressions.js"></script>
+    <script src="js/leaflet.js"></script>
+    <script src="js/L.Control.Layers.Tree.min.js"></script>
+    <script src="js/leaflet.rotatedMarker.js"></script>
+    <script src="js/leaflet.pattern.js"></script>
+    <script src="js/leaflet-hash.js"></script>
+    <script src="js/Autolinker.min.js"></script>
+    <script src="js/rbush.min.js"></script>
+    <script src="js/labelgun.min.js"></script>
+    <script src="js/labels.js"></script>
+    <script src="js/leaflet.photon.js"></script>
+    <script src="js/leaflet-measure.js"></script>
+    <script src="data/limiti_comuni_1.js"></script>
+    <script>
+
+    /* ── UI helpers ─────────────────────────────────────────── */
+    function setLang(btn) {
+        document.querySelectorAll('.lang-btn').forEach(function(b) {
+            b.classList.remove('active');
+        });
+        btn.classList.add('active');
+    }
+
+    function toggleFacilities(headerEl) {
+        var submenu = document.getElementById('facilities-submenu');
+        var arrow   = headerEl.querySelector('.toggle-arrow');
+        var opening = !submenu.classList.contains('open');
+        submenu.classList.toggle('open');
+        arrow.style.transform = opening ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+
+    function showRouteInfo(routeName) {
+        document.getElementById('right-panel').classList.add('open');
+        document.getElementById('info-panel-title').textContent = routeName + ' Information';
+        document.getElementById('info-placeholder').style.display = 'none';
+        document.getElementById('route-info-name').textContent = routeName;
+        document.getElementById('route-info-content').style.display = 'block';
+    }
+
+    function closeRightPanel() {
+        document.getElementById('right-panel').classList.remove('open');
+        document.querySelectorAll('input[name="cycling-route"]').forEach(function(r) { r.checked = false; });
+    }
+
+    function toggleCyclingRoutes(headerEl) {
+        var submenu = document.getElementById('cycling-submenu');
+        var arrow   = headerEl.querySelector('.toggle-arrow');
+        var opening = !submenu.classList.contains('open');
+        submenu.classList.toggle('open');
+        arrow.style.transform = opening ? 'rotate(0deg)' : 'rotate(-90deg)';
+    }
+
+    /* layer-group registry: add Leaflet layers after they are created */
+    var layerGroups = {
+        'study-area':     { layers: [], visible: true },
+        'cycling-routes': { layers: [], visible: true },
+        'facilities':     { layers: [], visible: true }
+    };
+
+    function toggleGroup(groupId, headerEl) {
+        var group = layerGroups[groupId];
+        if (!group) return;
+        group.visible = !group.visible;
+
+        group.layers.forEach(function(layer) {
+            if (group.visible) { map.addLayer(layer); }
+            else               { map.removeLayer(layer); }
+        });
+
+        if (group.visible) {
+            headerEl.classList.add('active-group');
+            headerEl.classList.remove('collapsed');
+        } else {
+            headerEl.classList.remove('active-group');
+            headerEl.classList.add('collapsed');
+        }
+
+        updateLegend(groupId, group.visible);
+    }
+
+    function updateLegend(groupId, visible) {
+        var legendEl     = document.getElementById('legend-' + groupId);
+        var placeholder  = document.getElementById('legend-placeholder');
+        if (legendEl) legendEl.classList.toggle('active', visible);
+        var anyActive = document.querySelector('.legend-section.active');
+        if (placeholder) placeholder.style.display = anyActive ? 'none' : 'block';
+    }
+
+    /* ── Map init ───────────────────────────────────────────── */
+    var map = L.map('map', {
+        zoomControl: false, maxZoom: 28, minZoom: 1
+    }).fitBounds([[44.73346661331852, 6.781066858400134],
+                  [45.011422745355524, 7.365877006310432]]);
+
+    var hash = new L.Hash(map);
+    map.attributionControl.setPrefix(
+        '<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a>' +
+        ' &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a>' +
+        ' &middot; <a href="https://qgis.org">QGIS</a>'
+    );
+    var autolinker = new Autolinker({ truncate: { length: 30, location: 'smart' } });
+
+    function removeEmptyRowsFromPopupContent(content, feature) {
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        var rows = tempDiv.querySelectorAll('tr');
+        for (var i = 0; i < rows.length; i++) {
+            var td  = rows[i].querySelector('td.visible-with-data');
+            var key = td ? td.id : '';
+            if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                rows[i].parentNode.removeChild(rows[i]);
+            }
+        }
+        return tempDiv.innerHTML;
+    }
+
+    function addClassToPopupIfMedia(content, popup) {
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        var imgTd = tempDiv.querySelector('td img');
+        if (imgTd) {
+            var src = imgTd.getAttribute('src');
+            if (/\.(jpg|jpeg|png|gif|bmp|webp|avif)$/i.test(src)) {
+                popup._contentNode.classList.add('media');
+                setTimeout(function() { popup.update(); }, 10);
+            } else if (/\.(mp3|wav|ogg|aac)$/i.test(src)) {
+                var audio = document.createElement('audio');
+                audio.controls = true; audio.src = src;
+                imgTd.parentNode.replaceChild(audio, imgTd);
+                popup._contentNode.classList.add('media');
+                setTimeout(function() { popup.setContent(tempDiv.innerHTML); popup.update(); }, 10);
+            } else if (/\.(mp4|webm|ogg|mov)$/i.test(src)) {
+                var video = document.createElement('video');
+                video.controls = true; video.src = src;
+                video.style.cssText = 'width:400px;height:300px;max-height:60vh;max-width:60vw;';
+                imgTd.parentNode.replaceChild(video, imgTd);
+                popup._contentNode.classList.add('media');
+                video.addEventListener('loadedmetadata', function() { popup.update(); });
+                setTimeout(function() { popup.setContent(tempDiv.innerHTML); popup.update(); }, 10);
+            } else {
+                popup._contentNode.classList.remove('media');
+            }
+        } else {
+            popup._contentNode.classList.remove('media');
+        }
+    }
+
+    var bounds_group = new L.featureGroup([]);
+    function setBounds() {}
+
+    /* OSM tile layer */
+    map.createPane('pane_OSMStandard_0');
+    map.getPane('pane_OSMStandard_0').style.zIndex = 400;
+    var layer_OSMStandard_0 = L.tileLayer('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        pane: 'pane_OSMStandard_0',
+        opacity: 1.0,
+        attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, CC-BY-SA</a>',
+        minZoom: 1, maxZoom: 28, minNativeZoom: 0, maxNativeZoom: 19
+    });
+    map.addLayer(layer_OSMStandard_0);
+
+    /* Aerial / satellite base layer – Esri World Imagery (same as QGIS, free, no key) */
+    var layer_OpenTopoMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        opacity: 1.0,
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        minZoom: 1, maxZoom: 20, minNativeZoom: 0, maxNativeZoom: 19
+    });
+
+    /* Cycling base layer – CyclOSM (free, no key) */
+    var layer_CyclOSM = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        opacity: 1.0,
+        attribution: '<a href="https://github.com/cyclosm/cyclosm-cartocss-style/releases">CyclOSM</a> | Map data: © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        minZoom: 1, maxZoom: 20, minNativeZoom: 0, maxNativeZoom: 20
+    });
+
+    /* municipality boundaries layer */
+    function pop_limiti_comuni_1(feature, layer) {
+        var p = feature.properties;
+        var fields = ['COD_RIP','COD_REG','COD_PROV','COD_CM','COD_UTS',
+                      'PRO_COM','PRO_COM_T','COMUNE','COMUNE_A','CC_UTS',
+                      'Shape_Leng','Shape_Area'];
+        var rows = fields.map(function(f) {
+            return '<tr><td colspan="2">' +
+                (p[f] !== null ? autolinker.link(String(p[f]).replace(/'/g, "'").toLocaleString()) : '') +
+                '</td></tr>';
+        }).join('');
+        var popupContent = '<table>' + rows + '</table>';
+        var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+        layer.on('popupopen', function(e) { addClassToPopupIfMedia(content, e.popup); });
+        layer.bindPopup(content, { maxHeight: 400 });
+    }
+
+    function style_limiti_comuni_1_0() {
+        return {
+            pane: 'pane_limiti_comuni_1',
+            opacity: 1,
+            color: 'rgba(35,35,35,1.0)',
+            dashArray: '', lineCap: 'butt', lineJoin: 'miter',
+            weight: 1.0,
+            fill: true, fillOpacity: 1,
+            fillColor: 'rgba(213,180,60,1.0)',
+            interactive: false,
+        };
+    }
+
+    map.createPane('pane_limiti_comuni_1');
+    map.getPane('pane_limiti_comuni_1').style.zIndex = 401;
+    map.getPane('pane_limiti_comuni_1').style['mix-blend-mode'] = 'normal';
+    var layer_limiti_comuni_1 = new L.geoJson(json_limiti_comuni_1, {
+        attribution: '',
+        interactive: false,
+        dataVar: 'json_limiti_comuni_1',
+        layerName: 'layer_limiti_comuni_1',
+        pane: 'pane_limiti_comuni_1',
+        onEachFeature: pop_limiti_comuni_1,
+        style: style_limiti_comuni_1_0,
+    });
+    bounds_group.addLayer(layer_limiti_comuni_1);
+    map.addLayer(layer_limiti_comuni_1);
+    layerGroups['study-area'].layers.push(layer_limiti_comuni_1);
+
+    /* ── Right-side controls (top → bottom order matches addTo order) ── */
+
+    /* 1. Base-map thumbnail picker – topmost, panel opens LEFT on click */
+    var _currentBaseLayer = layer_OSMStandard_0;
+
+    var BasemapPicker = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function(map) {
+            var container = L.DomUtil.create('div', 'leaflet-control basemap-picker-control');
+
+            var btn = L.DomUtil.create('button', 'basemap-toggle-btn', container);
+            btn.title = 'Switch base map';
+
+            var panel = L.DomUtil.create('div', 'basemap-panel', container);
+
+            var basemaps = [
+                {
+                    name: 'Standard',
+                    layer: layer_OSMStandard_0,
+                    thumb: 'https://tile.openstreetmap.org/11/1067/742.png'
+                },
+                {
+                    name: 'Aerial',
+                    layer: layer_OpenTopoMap,
+                    thumb: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/11/742/1067'
+                },
+                {
+                    name: 'Cycling',
+                    layer: layer_CyclOSM,
+                    thumb: 'https://a.tile-cyclosm.openstreetmap.fr/cyclosm/11/1067/742.png'
+                }
+            ];
+
+            var cards = [];
+
+            basemaps.forEach(function(bm, i) {
+                var card  = L.DomUtil.create('div',  'basemap-card' + (i === 0 ? ' active' : ''), panel);
+                var img   = L.DomUtil.create('img',  'basemap-thumb', card);
+                img.src   = bm.thumb;
+                img.alt   = bm.name;
+                var lbl   = L.DomUtil.create('span', 'basemap-label', card);
+                lbl.textContent = bm.name;
+
+                L.DomEvent.on(card, 'click', function() {
+                    if (_currentBaseLayer === bm.layer) { panel.classList.remove('open'); return; }
+                    map.removeLayer(_currentBaseLayer);
+                    _currentBaseLayer = bm.layer;
+                    map.addLayer(_currentBaseLayer);
+                    cards.forEach(function(c) { c.classList.remove('active'); });
+                    card.classList.add('active');
+                    panel.classList.remove('open');
+                });
+
+                cards.push(card);
+            });
+
+            L.DomEvent.on(btn, 'click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                panel.classList.toggle('open');
+            });
+
+            document.addEventListener('click', function() {
+                panel.classList.remove('open');
+            });
+
+            L.DomEvent.disableClickPropagation(container);
+            L.DomEvent.disableScrollPropagation(container);
+
+            return container;
+        }
+    });
+    new BasemapPicker().addTo(map);
+
+    /* 2. Zoom +/- */
+    L.control.zoom({ position: 'topright' }).addTo(map);
+
+    /* 3. Measure tool */
+    var measureControl = new L.Control.Measure({
+        position: 'topright',
+        primaryLengthUnit: 'meters', secondaryLengthUnit: 'kilometers',
+        primaryAreaUnit: 'sqmeters', secondaryAreaUnit: 'hectares'
+    });
+    measureControl.addTo(map);
+    document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+    document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+
+    /* 4. Geocoder search – bottommost */
+    var _searchResult = null;
+    var _searchMarker = null;
+    var photonControl = L.control.photon({
+        url: 'https://nominatim.openstreetmap.org/search?format=geojson&addressdetails=1&',
+        feedbackLabel: '',
+        position: 'topright',
+        includePosition: true,
+        initial: true,
+    }).addTo(map);
+    photonControl._container.childNodes[0].style.borderRadius = '10px';
+
+    photonControl.on('selected', function(e) {
+        if (_searchResult !== null) {
+            if (_searchMarker) map.removeLayer(_searchMarker);
+            map.removeLayer(_searchResult);
+        }
+        _searchResult = L.geoJSON(e.choice).addTo(map);
+        var label = e.choice.properties.label || e.choice.properties.display_name;
+        _searchMarker = L.marker(_searchResult.getLayers()[0].getLatLng())
+            .bindPopup(label).addTo(map);
+        map.setView(_searchResult.getLayers()[0].getLatLng(), 17);
+        e.target.input.value = label;
+    });
+
+    var search = document.getElementsByClassName('leaflet-photon leaflet-control')[0];
+    search.classList.add('leaflet-control-search');
+    search.style.display = 'flex';
+    search.style.backgroundColor = 'rgba(255,255,255,0.5)';
+    var searchBtn = document.createElement('div');
+    searchBtn.id = 'gcd-button-control';
+    searchBtn.className = 'gcd-gl-btn fa fa-search search-button';
+    search.insertBefore(searchBtn, search.firstChild);
+    var searchPanel = search.lastChild;
+    searchPanel.style.display = 'none';
+    searchBtn.addEventListener('click', function() {
+        searchPanel.style.display = searchPanel.style.display === 'none' ? 'block' : 'none';
+    });
+
+    /* Init legend state */
+    updateLegend('study-area', true);
+
+    setBounds();
+    </script>
+</body>
+</html>
